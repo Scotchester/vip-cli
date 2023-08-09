@@ -672,11 +672,11 @@ export function resolvePhpVersion( version: string ): string {
 	}
 
 	let result: string;
-	if ( DEV_ENVIRONMENT_PHP_VERSIONS[ version ] === undefined ) {
-		const images = Object.values( DEV_ENVIRONMENT_PHP_VERSIONS ) as string[];
-		const image = images.find( value => value === version );
+	if ( ! ( version in DEV_ENVIRONMENT_PHP_VERSIONS ) ) {
+		const images = Object.values( DEV_ENVIRONMENT_PHP_VERSIONS );
+		const image = images.find( value => value.image === version );
 		if ( image ) {
-			result = image;
+			result = image.image;
 		} else if ( version.includes( '/' ) ) {
 			// Assuming this is a Docker image
 			// This can happen when we first called `vip dev-env update -P image:ghcr.io/...`
@@ -684,10 +684,10 @@ export function resolvePhpVersion( version: string ): string {
 			// but we still want to use it.
 			result = version;
 		} else {
-			result = images[ 0 ];
+			result = images[ 0 ].image;
 		}
 	} else {
-		result = DEV_ENVIRONMENT_PHP_VERSIONS[ version ]!;
+		result = DEV_ENVIRONMENT_PHP_VERSIONS[ version ].image;
 	}
 
 	debug( 'Resolved PHP image: %j', result );
@@ -699,11 +699,15 @@ export async function promptForPhpVersion( initialValue: string ): Promise< stri
 
 	let answer = initialValue;
 	if ( isStdinTTY ) {
-		const choices = Object.keys( DEV_ENVIRONMENT_PHP_VERSIONS );
+		const choices = [];
+		Object.keys( DEV_ENVIRONMENT_PHP_VERSIONS ).forEach( version => {
+			const phpImage = DEV_ENVIRONMENT_PHP_VERSIONS[ version ];
+			choices.push( { message: phpImage.label, value: version } );
+		} );
 		const images = Object.values( DEV_ENVIRONMENT_PHP_VERSIONS );
-		let initial = images.findIndex( version => version === initialValue );
+		let initial = images.findIndex( version => version.image === initialValue );
 		if ( initial === -1 ) {
-			choices.push( initialValue );
+			choices.push( { message: initialValue, value: initialValue } );
 			initial = choices.length - 1;
 		}
 
